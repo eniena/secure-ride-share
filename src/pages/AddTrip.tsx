@@ -61,30 +61,87 @@ const AddTrip = () => {
     e.preventDefault();
     if (!user || !userProfile) return;
 
+    // Validation
+    if (!fromCity.trim()) {
+      toast({
+        title: "خطأ في البيانات",
+        description: "يرجى اختيار مدينة الانطلاق",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!toCity.trim()) {
+      toast({
+        title: "خطأ في البيانات", 
+        description: "يرجى اختيار مدينة الوصول",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (fromCity === toCity) {
+      toast({
+        title: "خطأ في البيانات",
+        description: "مدينة الانطلاق يجب أن تختلف عن مدينة الوصول",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const departureTime = formData.get('departure_time') as string;
+    
+    if (!departureTime) {
+      toast({
+        title: "خطأ في البيانات",
+        description: "يرجى تحديد تاريخ ووقت الانطلاق",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if date is in the future
+    const departureDate = new Date(departureTime);
+    if (departureDate <= new Date()) {
+      toast({
+        title: "خطأ في التاريخ",
+        description: "يجب أن يكون تاريخ الانطلاق في المستقبل",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
-      const formData = new FormData(e.currentTarget);
-      
       const tripData = {
         driver_id: userProfile.id,
         from_location: fromCity,
         to_location: toCity,
-        departure_time: formData.get('departure_time') as string,
+        departure_time: departureTime,
         total_seats: parseInt(formData.get('total_seats') as string),
-        available_seats: parseInt(formData.get('total_seats') as string), // Initially all seats are available
+        available_seats: parseInt(formData.get('total_seats') as string),
         price_per_seat: parseFloat(formData.get('price_per_seat') as string),
-        car_model: formData.get('car_model') as string,
-        car_plate: formData.get('car_plate') as string,
-        notes: formData.get('notes') as string,
+        car_model: (formData.get('car_model') as string) || null,
+        car_plate: (formData.get('car_plate') as string) || null,
+        notes: (formData.get('notes') as string) || null,
         gender_preference: formData.get('gender_preference') as any
       };
 
-      const { error } = await supabase
-        .from('trips')
-        .insert([tripData]);
+      console.log('Submitting trip data:', tripData);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('trips')
+        .insert([tripData])
+        .select();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Trip created successfully:', data);
 
       toast({
         title: "تم إنشاء الرحلة بنجاح",
@@ -258,9 +315,9 @@ const AddTrip = () => {
               <Button 
                 type="submit" 
                 className="w-full shadow-shadow-button" 
-                disabled={loading}
+                disabled={loading || !fromCity || !toCity}
               >
-                {loading ? 'جارٍ الإنشاء...' : 'إنشاء الرحلة'}
+                {loading ? 'جارٍ النشر...' : 'نشر الرحلة'}
               </Button>
             </form>
           </CardContent>
