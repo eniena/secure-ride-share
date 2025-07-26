@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, MapPin, Calendar, Users, Star, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { CitySelect } from "@/components/ui/city-select";
 
 interface Trip {
   id: string;
@@ -34,10 +35,19 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [searchFrom, setSearchFrom] = useState("");
   const [searchTo, setSearchTo] = useState("");
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     fetchTrips();
   }, []);
+
+  useEffect(() => {
+    if (searchFrom || searchTo) {
+      performSearch();
+    } else {
+      fetchTrips();
+    }
+  }, [searchFrom, searchTo]);
 
   const fetchTrips = async () => {
     try {
@@ -60,10 +70,40 @@ const Home = () => {
     }
   };
 
-  const filteredTrips = trips.filter(trip => 
-    trip.from_location.toLowerCase().includes(searchFrom.toLowerCase()) &&
-    trip.to_location.toLowerCase().includes(searchTo.toLowerCase())
-  );
+  const performSearch = async () => {
+    if (!searchFrom && !searchTo) {
+      fetchTrips();
+      return;
+    }
+
+    setSearching(true);
+    try {
+      let query = supabase
+        .from('trips')
+        .select(`
+          *,
+          driver:users!trips_driver_id_fkey(name, rating, total_ratings)
+        `)
+        .gt('departure_time', new Date().toISOString())
+        .gt('available_seats', 0);
+
+      if (searchFrom) {
+        query = query.ilike('from_location', `%${searchFrom}%`);
+      }
+      if (searchTo) {
+        query = query.ilike('to_location', `%${searchTo}%`);
+      }
+
+      const { data, error } = await query.order('departure_time', { ascending: true });
+
+      if (error) throw error;
+      setTrips(data || []);
+    } catch (error) {
+      console.error('Error searching trips:', error);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleBookTrip = async (tripId: string) => {
     if (!user) {
@@ -99,30 +139,28 @@ const Home = () => {
           {/* Search Form */}
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 max-w-2xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="من"
+              <div className="bg-white/90 rounded-lg">
+                <CitySelect
                   value={searchFrom}
-                  onChange={(e) => setSearchFrom(e.target.value)}
-                  className="pr-10 bg-white/90 border-0 text-foreground"
+                  onChange={setSearchFrom}
+                  placeholder="من"
                 />
               </div>
-              <div className="relative">
-                <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="إلى"
+              <div className="bg-white/90 rounded-lg">
+                <CitySelect
                   value={searchTo}
-                  onChange={(e) => setSearchTo(e.target.value)}
-                  className="pr-10 bg-white/90 border-0 text-foreground"
+                  onChange={setSearchTo}
+                  placeholder="إلى"
                 />
               </div>
               <Button 
                 variant="secondary" 
                 className="w-full bg-white text-primary hover:bg-white/90"
+                onClick={performSearch}
+                disabled={searching}
               >
                 <Search className="w-4 h-4 ml-2" />
-                بحث
+                {searching ? 'جارٍ البحث...' : 'بحث'}
               </Button>
             </div>
           </div>
@@ -155,9 +193,9 @@ const Home = () => {
               </Card>
             ))}
           </div>
-        ) : filteredTrips.length > 0 ? (
+        ) : trips.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTrips.map((trip) => (
+            {trips.map((trip) => (
               <Card key={trip.id} className="hover:shadow-shadow-card transition-all duration-300 border-border/50">
                 <CardHeader>
                   <div className="flex justify-between items-start">

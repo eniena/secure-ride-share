@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, Calendar, Users, Car, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { CitySelect } from "@/components/ui/city-select";
 
 const AddTrip = () => {
   const { user } = useAuth();
@@ -18,6 +19,8 @@ const AddTrip = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [fromCity, setFromCity] = useState("");
+  const [toCity, setToCity] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -65,8 +68,8 @@ const AddTrip = () => {
       
       const tripData = {
         driver_id: userProfile.id,
-        from_location: formData.get('from_location') as string,
-        to_location: formData.get('to_location') as string,
+        from_location: fromCity,
+        to_location: toCity,
         departure_time: formData.get('departure_time') as string,
         total_seats: parseInt(formData.get('total_seats') as string),
         available_seats: parseInt(formData.get('total_seats') as string), // Initially all seats are available
@@ -127,22 +130,22 @@ const AddTrip = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="from_location">من *</Label>
-                    <Input
-                      id="from_location"
-                      name="from_location"
+                    <CitySelect
+                      value={fromCity}
+                      onChange={setFromCity}
                       placeholder="مدينة الانطلاق"
+                      name="from_location"
                       required
-                      className="text-right"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="to_location">إلى *</Label>
-                    <Input
-                      id="to_location"
-                      name="to_location"
+                    <CitySelect
+                      value={toCity}
+                      onChange={setToCity}
                       placeholder="مدينة الوصول"
+                      name="to_location"
                       required
-                      className="text-right"
                     />
                   </div>
                 </div>
